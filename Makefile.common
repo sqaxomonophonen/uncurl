@@ -1,0 +1,6 @@
+CFLAGS+=-Wall
+CFLAGS+=-O0 -g
+#CFLAGS+=-O2
+LDLIBS+=-lm
+all: uncurl
+uncurl: uncurl.c

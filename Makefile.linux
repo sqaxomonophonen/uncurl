@@ -1,0 +1,4 @@
+pkgs=sdl2
+CFLAGS+=$(shell pkg-config --cflags ${pkgs})
+LDLIBS+=$(shell pkg-config --libs ${pkgs})
+include Makefile.common
