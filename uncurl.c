@@ -105,7 +105,7 @@ int main(int argc, char** argv)
 		fprintf(stderr, "Input data must be an RGB byte stream, 3 bytes per pixel (R0,G0,B0,R1,G1,...)\n");
 		fprintf(stderr, "Options:\n");
 		fprintf(stderr, "  exit            Exit program on click\n");
-		fprintf(stderr, "  write:<PATH>    Write 1D coordinate to file or stdout on click\n");
+		fprintf(stderr, "  write:<PATH>    Write 1D coordinate to file on click\n");
 		fprintf(stderr, "  clipboard       Write 1D coordinate to clipboard on click\n");
 		// NOTE insert+fix usage if I ever get more than one curve type
 		//fprintf(stderr, "  curve:<TYPE>    Select curve type (default: hilbert)\n");
@@ -115,7 +115,7 @@ int main(int argc, char** argv)
 		exit(EXIT_FAILURE);
 	}
 
-	// parse click actions
+	// parse options
 	int exit_on_click = 0;
 	int copy_to_clipboard_on_click = 0;
 	enum curve_type curve_type = CURVE_TYPE_hilbert;
