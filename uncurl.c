@@ -82,10 +82,10 @@ static int starts_with(const char* s, const char* prefix, const char** out_tail)
 	}
 }
 
-int window_width, window_height;
-double pan_x = 0.0;
-double pan_y = 0.0;
-double scale = 1.0;
+static int window_width, window_height;
+static double pan_x = 0.0;
+static double pan_y = 0.0;
+static double scale = 1.0;
 
 static void map_screen_to_local(double sx, double sy, double* out_lx, double* out_ly)
 {
