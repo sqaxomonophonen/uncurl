@@ -310,6 +310,16 @@ int main(int argc, char** argv)
 			}
 		}
 
+		// There are moiré pattern problems both when zooming in and
+		// out. SDL_ScaleModeLinear offers a slight improvement when
+		// zooming out but mipmapping is required to solve the problem
+		// properly (however, SDL2 has no mipmap support). A "pixel art
+		// shader" is required to solve the problem with zooming in; it
+		// anti-aliases the edges between texels without blurring the
+		// image. I suppose that none of these problems are worth the
+		// loss of portability and added complexity.
+		SDL_SetTextureScaleMode(texture, scale > 1.0 ? SDL_ScaleModeNearest : SDL_ScaleModeLinear);
+
 		SDL_RenderClear(renderer);
 		SDL_Rect dst;
 		{
