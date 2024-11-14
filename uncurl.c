@@ -182,7 +182,7 @@ int main(int argc, char** argv)
 
 	// draw curve
 	switch (curve_type) {
-	case CURVE_TYPE_hilbert: {
+	case CURVE_TYPE_hilbert: { // adapted from https://rosettacode.org/wiki/Hilbert_curve#C
 		uint8_t* rp = data;
 		for (size_t i = 0; i < input_length; i++) {
 			int s=1;
