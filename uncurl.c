@@ -1,3 +1,5 @@
+// (licensing information at bottom)
+
 // configuration:
 
 #ifndef MOUSE_WHEEL_SENSITIVITY
@@ -97,6 +99,109 @@ static void map_screen_to_local(double sx, double sy, double* out_lx, double* ou
 	if (out_ly) *out_ly = ly;
 }
 
+struct lindenmayer_system_stack_entry {
+	int rule_index;
+	int pc;
+};
+
+struct lindenmayer_system_rule {
+	const char* ops;
+	int length;
+};
+
+struct lindenmayer_system {
+	int n_rules;
+	struct lindenmayer_system_rule rules[1<<8];
+	int depth;
+	struct lindenmayer_system_stack_entry stack[1<<8];
+	int stack_height;
+	int state;
+	int x,y,direction;
+};
+
+static void lindenmayer_system_init(struct lindenmayer_system* lsys, int n_rules, const char** rules, int depth)
+{
+	assert(n_rules <= ARRAY_LENGTH(lsys->rules));
+	memset(lsys, 0, sizeof *lsys);
+	lsys->depth = depth;
+	lsys->n_rules = n_rules;
+	for (int i = 0; i < n_rules; i++) {
+		struct lindenmayer_system_rule* rule = &lsys->rules[i];
+		rule->ops = strdup(rules[i]);
+		rule->length = strlen(rule->ops);
+	}
+}
+
+static int lindenmayer_system_next_coord(struct lindenmayer_system* lsys, int* out_x, int* out_y)
+{
+	if (lsys->state >= 2) return 0;
+	if (lsys->state == 0) {
+		// it's awkward to emit either the first or last point
+		if (out_x) *out_x = 0;
+		if (out_y) *out_y = 0;
+		lsys->stack_height = 1;
+		lsys->stack[0].rule_index = 0;
+		lsys->stack[0].pc = 0;
+		lsys->state = 1;
+		return 1;
+	}
+	assert(lsys->state == 1);
+	for (;;) {
+		if (lsys->stack_height == 0) {
+			lsys->state = 2;
+			return 0;
+		}
+		struct lindenmayer_system_stack_entry* e = &lsys->stack[lsys->stack_height-1];
+		assert(0 <= e->rule_index && e->rule_index < lsys->n_rules);
+		struct lindenmayer_system_rule* rule = &lsys->rules[e->rule_index];
+		if (e->pc >= rule->length) {
+			lsys->stack_height--;
+			if (lsys->stack_height > 0) {
+				lsys->stack[lsys->stack_height-1].pc++;
+			}
+			continue;
+		}
+		assert(e->pc < rule->length);
+		char op = rule->ops[e->pc];
+		int new_rule_index = -1;
+		int did_emit = 0;
+		switch (op) {
+		case '^': {
+			switch (lsys->direction) {
+			case 0: lsys->x++; break;
+			case 1: lsys->y++; break;
+			case 2: lsys->x--; break;
+			case 3: lsys->y--; break;
+			default: assert(!"bad state");
+			}
+			if (out_x) *out_x = lsys->x;
+			if (out_y) *out_y = lsys->y;
+			did_emit = 1;
+		}	break;
+		case '+': {
+			lsys->direction = (lsys->direction + 1) & 3;
+		}	break;
+		case '-': {
+			lsys->direction = (lsys->direction + 3) & 3;
+		}	break;
+		default: {
+			assert('0' <= op && op <= '9');
+			new_rule_index = op - '0';
+		}	break;
+		}
+		if (new_rule_index >= 0 && lsys->stack_height < lsys->depth) {
+			assert(lsys->stack_height < ARRAY_LENGTH(lsys->stack));
+			lsys->stack[lsys->stack_height].rule_index = new_rule_index;
+			lsys->stack[lsys->stack_height].pc = 0;
+			lsys->stack_height++;
+		} else {
+			assert(lsys->stack_height > 0);
+			lsys->stack[lsys->stack_height-1].pc++;
+		}
+		if (did_emit) return 1;
+	}
+}
+
 int main(int argc, char** argv)
 {
 	if (argc < 2) {
@@ -181,40 +286,30 @@ int main(int argc, char** argv)
 	memset(reverse, -1, n_pixels*sizeof(reverse[0]));
 
 	// draw curve
+	struct lindenmayer_system lsys;
 	switch (curve_type) {
-	case CURVE_TYPE_hilbert: { // adapted from https://rosettacode.org/wiki/Hilbert_curve#C
+	case CURVE_TYPE_hilbert: {
+		const char* rules[] = {
+			"+1^-0^0-^1+",
+			"-0^+1^1+^0-",
+		};
+		lindenmayer_system_init(&lsys, ARRAY_LENGTH(rules), rules, width_log2);
+	}	break;
+	default: assert(!"unreachable");
+	}
+	{
+		int px, py;
 		uint8_t* rp = data;
-		for (size_t i = 0; i < input_length; i++) {
-			int s=1;
-			int px=0,py=0;
-			size_t t = i;
-			while (s < width) {
-				int rx = 1 & (t >> 1);
-				int ry = 1 & (t ^ rx);
-				if (!ry) {
-					if (rx) {
-						px = s-1-px;
-						py = s-1-py;
-					}
-					const int tmp = px;
-					px = py;
-					py = tmp;
-				}
-				px += s*rx;
-				py += s*ry;
-				t >>= 2;
-				s <<= 1;
-			}
+		int point_index = 0;
+		while (lindenmayer_system_next_coord(&lsys, &px, &py)) {
 			assert(0 <= px && px < width);
 			assert(0 <= py && py < width);
 			const int image_index = (py << width_log2) + px;
 			assert(0 <= image_index && image_index < n_pixels);
 			uint8_t* wp = &image[image_index*N_COMP];
 			for (int c=0; c<N_COMP; c++) *(wp++) = *(rp++);
-			reverse[image_index] = i;
+			reverse[image_index] = point_index++;
 		}
-	}	break;
-	default: assert(!"unreachable");
 	}
 
 	SDL_Texture* texture;
@@ -328,8 +423,7 @@ int main(int argc, char** argv)
 			const int mid_y = (window_height >> 1) + pan_y;
 			dst.x = mid_x-ex;
 			dst.y = mid_y-ex;
-			dst.w = ex*2;
-			dst.h = ex*2;
+			dst.w = dst.h = ex*2;
 		}
 		SDL_RenderCopy(renderer, texture, NULL, &dst);
 		SDL_RenderPresent(renderer);
@@ -337,3 +431,24 @@ int main(int argc, char** argv)
 
 	return EXIT_SUCCESS;
 }
+/*
+===============================================================================
+Public Domain (www.unlicense.org)
+This is free and unencumbered software released into the public domain.
+Anyone is free to copy, modify, publish, use, compile, sell, or distribute this
+software, either in source code form or as a compiled binary, for any purpose,
+commercial or non-commercial, and by any means.
+In jurisdictions that recognize copyright laws, the author or authors of this
+software dedicate any and all copyright interest in the software to the public
+domain. We make this dedication for the benefit of the public at large and to
+the detriment of our heirs and successors. We intend this dedication to be an
+overt act of relinquishment in perpetuity of all present and future rights to
+this software under copyright law.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+===============================================================================
+*/
