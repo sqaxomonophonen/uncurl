@@ -1,15 +1,12 @@
-// (licensing information at bottom)
+// uncurl - public domain - written by Anders Kaare Straadt 2024
 
 // configuration:
-
 #ifndef MOUSE_WHEEL_SENSITIVITY
 #define MOUSE_WHEEL_SENSITIVITY (1.017)
 #endif
-
 #ifndef MOUSE_BUTTON_SELECT
 #define MOUSE_BUTTON_SELECT (1) // LMB
 #endif
-
 #ifndef MOUSE_BUTTON_PAN
 #define MOUSE_BUTTON_PAN (3) // RMB
 #endif
