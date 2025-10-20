@@ -214,6 +214,10 @@ int main(int argc, char** argv)
 		fprintf(stderr, "HINT: you can add any number of click action options.\n");
 		fprintf(stderr, "HINT: \"-\" works as path for both input (stdin) and output (stdout)\n");
 		fprintf(stderr, "HINT: you can pan+zoom with RMB+mouse wheel\n");
+		fprintf(stderr, "Example:\n");
+		fprintf(stderr, "$ python make_test_data.py uncurl - | ./uncurl - write:- exit\n");
+		fprintf(stderr, "It uses the make_test_data.py script to convert the uncurl binary into something\n");
+		fprintf(stderr, "you can view in uncurl. The click actions write coord to stdout and exits.\n");
 		exit(EXIT_FAILURE);
 	}
 
